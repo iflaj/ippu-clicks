@@ -1,0 +1,300 @@
+================================================================================
+          IPPU CLICKS PHOTOGRAPHY - COMPLETE SPACESHIP HOSTING & DEPLOYMENT GUIDE
+================================================================================
+
+This guide explains how to deploy your Ippu Clicks Photography event-sharing web
+application on SPACESHIP (Spaceship.com by Namecheap) so anyone can scan your
+branded QR codes, browse galleries, use the 55%+ AI face scanner (front & side
+profile), and download photos.
+
+This setup is 100% self-contained:
+- Database: Built-in local database (backend/src/data/database.json)
+- Photo Storage: Persistent storage on your Spaceship hosting disk
+- Zero external subscriptions needed (No AWS S3, no MongoDB Atlas required)
+- Both Frontend (React) and Backend (Node.js Express) can run together on a single domain!
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS:
+--------------------------------------------------------------------------------
+1. Prerequisites for Spaceship
+2. METHOD 1: Spaceship Shared Web Hosting (cPanel / Setup Node.js App) [RECOMMENDED]
+   - Step 1: Build the Frontend locally
+   - Step 2: Prepare and Upload Files to Spaceship
+   - Step 3: Create the Node.js Application in cPanel
+   - Step 4: Set Environment Variables
+   - Step 5: Install NPM Packages
+   - Step 6: Enable Free SSL on Spaceship
+3. METHOD 2: Spaceship Cloud VPS (Ubuntu 22.04 / 24.04 with PM2 & Nginx)
+4. METHOD 3: Spaceship Backend + Vercel Frontend (Two-Tier Alternative)
+5. How to Download Database Backups
+6. Admin Login Credentials & Security
+7. Troubleshooting Common Spaceship Issues
+
+================================================================================
+1. PREREQUISITES FOR SPACESHIP
+================================================================================
+1. A Spaceship.com account with an active hosting plan:
+   - Spaceship Shared Web Hosting (with cPanel / Unbox Launchpad)
+     OR
+   - Spaceship Cloud VPS / Dedicated Server
+2. A domain name connected to your Spaceship hosting (e.g. yourdomain.com or
+   photos.yourdomain.com).
+3. Node.js v20+ or v22+ installed on your computer.
+
+================================================================================
+2. METHOD 1: SPACESHIP SHARED HOSTING (cPanel / Setup Node.js App)
+================================================================================
+This is the easiest and most popular method on Spaceship. Both your frontend
+and backend run seamlessly on your custom domain with zero CORS hassle!
+
+--------------------------------------------------------------------------------
+STEP 1: BUILD THE FRONTEND ON YOUR COMPUTER
+--------------------------------------------------------------------------------
+Open PowerShell on your computer:
+
+cd "d:\nstan pc flaj\frontend"
+npm run build
+
+This creates a production-ready 'dist' folder inside 'frontend/'.
+The backend Express server has been configured to automatically detect and serve
+this 'dist' folder to your visitors!
+
+--------------------------------------------------------------------------------
+STEP 2: PREPARE AND UPLOAD FILES TO SPACESHIP
+--------------------------------------------------------------------------------
+1. In your project directory ("d:\nstan pc flaj"):
+   Create a ZIP file containing:
+   - 'backend' folder (DO NOT include 'node_modules')
+   - 'frontend/dist' folder (only the built 'dist' folder)
+
+2. Log in to your Spaceship account at https://www.spaceship.com.
+3. Open your Hosting Manager (cPanel / Unbox File Manager).
+4. Navigate to your home directory:
+   You can place your project in:
+   /home/your_username/ippu-clicks
+   OR directly inside:
+   /home/your_username/public_html
+5. Upload your ZIP file and click **Extract**.
+
+Ensure your folder structure looks like this on the server:
+/home/your_username/ippu-clicks/
+   ├── backend/
+   │     ├── src/
+   │     │     ├── server.js
+   │     │     ├── config/
+   │     │     ├── controllers/
+   │     │     ├── data/
+   │     │     ├── middleware/
+   │     │     ├── routes/
+   │     │     └── services/
+   │     ├── package.json
+   │     └── uploads/
+   └── frontend/
+         └── dist/
+               ├── index.html
+               └── assets/
+
+--------------------------------------------------------------------------------
+STEP 3: CREATE THE NODE.JS APPLICATION IN SPACESHIP CPANEL
+--------------------------------------------------------------------------------
+1. In your Spaceship cPanel dashboard, search for and click:
+   "Setup Node.js App" (under the Software section).
+2. Click the "Create Application" button.
+3. Fill in the following application settings:
+   - Node.js Version: Select Node 20.x or 22.x (Recommended: 20.x or latest LTS)
+   - Application Mode: Production
+   - Application Root: ippu-clicks/backend
+     (The folder containing package.json and src/server.js)
+   - Application URL: Select your domain (e.g. yourdomain.com or photos.yourdomain.com)
+   - Application Startup File: src/server.js
+4. Click "Create" (or "Save").
+
+--------------------------------------------------------------------------------
+STEP 4: SET ENVIRONMENT VARIABLES IN SPACESHIP
+--------------------------------------------------------------------------------
+In the Node.js App settings page, scroll down to "Environment Variables"
+and click "Add Variable":
+
+1. Variable Name: PORT
+   Variable Value: (Leave empty or default; Passenger assigns it automatically)
+
+2. Variable Name: JWT_SECRET
+   Variable Value: ippu_clicks_super_secret_production_key_2026
+
+3. Variable Name: INSTAGRAM_HANDLE
+   Variable Value: ippu_clicks
+
+4. Variable Name: INSTAGRAM_URL
+   Variable Value: https://instagram.com/ippu_clicks
+
+5. Variable Name: CLIENT_BASE_URL
+   Variable Value: https://yourdomain.com
+   (Replace with your actual Spaceship domain name. This ensures all QR codes
+   link to your live domain!)
+
+Click "Save" to apply these environment variables.
+
+--------------------------------------------------------------------------------
+STEP 5: INSTALL DEPENDENCIES (NPM INSTALL)
+--------------------------------------------------------------------------------
+1. In the "Setup Node.js App" screen, click the "Run NPM Install" button.
+   Spaceship will install all required packages (sharp, express, archiver, etc.).
+
+   ALTERNATIVE VIA SSH OR CPANEL TERMINAL:
+   - Open "Terminal" in cPanel.
+   - Run the command provided at the top of your Node.js app page (e.g.):
+     source /home/your_username/nodevenv/ippu-clicks/backend/20/bin/activate
+     cd /home/your_username/ippu-clicks/backend
+     npm install
+     node src/data/updatePhotoDescriptors.js
+
+2. Click "Restart Application" at the top of the Node.js App screen.
+
+--------------------------------------------------------------------------------
+STEP 6: ENABLE FREE SSL (HTTPS) ON SPACESHIP
+--------------------------------------------------------------------------------
+1. In Spaceship Launchpad / cPanel, navigate to "SSL/TLS Status" or "Let's Encrypt".
+2. Select your domain (yourdomain.com).
+3. Click "Run AutoSSL" or "Issue Certificate".
+4. Spaceship will install a 100% free SSL certificate within 2-5 minutes.
+   * Note: Camera permissions for selfie face-scan strictly require HTTPS!
+
+Your Ippu Clicks Photography platform is now LIVE at:
+https://yourdomain.com
+
+================================================================================
+3. METHOD 2: SPACESHIP CLOUD VPS (UBUNTU LINUX)
+================================================================================
+If you purchased a Spaceship VPS (Ubuntu 22.04 / 24.04):
+
+1. Connect to your VPS via SSH:
+   ssh root@YOUR_SPACESHIP_VPS_IP
+
+2. Install Node.js 20, Git, PM2, and Nginx:
+   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+   sudo apt-get install -y nodejs git nginx
+   sudo npm install -g pm2
+
+3. Upload or Git clone your project to /var/www/ippu-clicks:
+   mkdir -p /var/www/ippu-clicks
+   cd /var/www/ippu-clicks
+   git clone https://github.com/YOUR_USERNAME/ippu-clicks-platform.git .
+
+4. Install Backend & Re-index Descriptors:
+   cd /var/www/ippu-clicks/backend
+   npm install
+   node src/data/updatePhotoDescriptors.js
+
+5. Start the Backend with PM2:
+   pm2 start src/server.js --name "ippu-clicks"
+   pm2 save
+   pm2 startup
+
+6. Build the Frontend:
+   cd /var/www/ippu-clicks/frontend
+   npm install
+   npm run build
+
+7. Configure Nginx:
+   sudo nano /etc/nginx/sites-available/ippu-clicks
+
+   Paste this configuration:
+   server {
+       listen 80;
+       server_name yourdomain.com www.yourdomain.com;
+
+       # Max upload file size for bulk high-res photography uploads
+       client_max_body_size 100M;
+
+       location / {
+           proxy_pass http://localhost:5000;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection 'upgrade';
+           proxy_set_header Host $host;
+           proxy_cache_bypass $http_upgrade;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+
+   Enable site & restart Nginx:
+   sudo ln -s /etc/nginx/sites-available/ippu-clicks /etc/nginx/sites-enabled/
+   sudo nginx -t
+   sudo systemctl restart nginx
+
+8. Install Free SSL with Certbot:
+   sudo apt install -y certbot python3-certbot-nginx
+   sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+
+================================================================================
+4. METHOD 3: TWO-TIER SETUP (SPACESHIP BACKEND + VERCEL FRONTEND)
+================================================================================
+If you prefer running your frontend on Vercel's Edge CDN and your backend on
+Spaceship:
+
+1. Host Backend on Spaceship (Method 1 or 2) under a subdomain:
+   https://api.yourdomain.com
+
+2. Deploy Frontend on Vercel:
+   - Import your GitHub repository into Vercel.
+   - Root Directory: frontend
+   - Add Environment Variable:
+     VITE_API_URL = https://api.yourdomain.com/api
+   - Deploy.
+
+3. In Spaceship Backend:
+   Set CLIENT_BASE_URL = https://your-app.vercel.app
+
+================================================================================
+5. HOW TO DOWNLOAD DATABASE BACKUPS
+================================================================================
+All data is stored directly on your Spaceship disk in:
+backend/src/data/database.json
+
+To backup:
+1. Go to your live Admin Portal:
+   https://yourdomain.com/admin
+2. Log in with your admin credentials.
+3. Click the **[↓ Backup DB]** button in the top navigation bar.
+4. An instant JSON backup of all events, guest PINs, and photo descriptor indexes
+   will download to your computer.
+
+================================================================================
+6. ADMIN LOGIN CREDENTIALS & SECURITY
+================================================================================
+Default Admin Credentials:
+- URL:      https://yourdomain.com/admin
+- Email:    admin@ippuclicks.com
+- Password: admin123
+
+To change password or email:
+Edit backend/src/data/database.json or change via the Admin Dashboard.
+
+================================================================================
+7. TROUBLESHOOTING COMMON SPACESHIP ISSUES
+================================================================================
+Q: Face scan says "Camera permission was blocked" on my phone.
+A: Web browsers only grant camera access over HTTPS (SSL). Ensure your Spaceship
+   SSL certificate is active and your URL starts with https://.
+
+Q: Bulk upload fails when uploading many high-res photos.
+A: In Spaceship cPanel -> "Select PHP Version" or "MultiPHP INI Editor":
+   Increase:
+   - upload_max_filesize = 128M
+   - post_max_size = 128M
+   - max_execution_time = 300
+
+Q: How do I re-run the 55%+ side-face indexing on Spaceship?
+A: Open cPanel Terminal, enter your Node environment, and run:
+   node src/data/updatePhotoDescriptors.js
+   It will automatically re-index all uploaded photos in database.json.
+
+================================================================================
+SUPPORT & CONTACT
+================================================================================
+Booking Phone:  0722136082
+WhatsApp Phone: 0759125207
+Brand:          Ippu Clicks Photography
+================================================================================
