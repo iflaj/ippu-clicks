@@ -150,6 +150,23 @@ export async function initDatabase() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
       `);
 
+      // 4. Auto-migration: Ensure all required columns exist in existing tables
+      try {
+        const [eventCols] = await pool.query('SHOW COLUMNS FROM `events`');
+        const eventColSet = new Set(eventCols.map(c => c.Field.toLowerCase()));
+
+        if (!eventColSet.has('watermark_type')) {
+          console.log("⚡ [Database] Auto-migrating: Adding missing 'watermark_type' column to 'events' table...");
+          await pool.query("ALTER TABLE `events` ADD COLUMN `watermark_type` VARCHAR(32) NOT NULL DEFAULT 'badge' AFTER `watermark_text`");
+          console.log("✅ [Database] 'watermark_type' column added successfully to 'events' table.");
+        }
+        if (!eventColSet.has('updated_at')) {
+          await pool.query("ALTER TABLE `events` ADD COLUMN `updated_at` VARCHAR(64) NULL AFTER `created_at`");
+        }
+      } catch (migrateErr) {
+        console.warn('⚡ [Database] Event auto-migration check note:', migrateErr.message);
+      }
+
       // Seed default admin if table is empty
       const [adminRows] = await pool.query('SELECT COUNT(*) as count FROM admins');
       if (adminRows[0].count === 0) {
@@ -332,6 +349,19 @@ export const PhotoDAO = {
       ) VALUES ?`,
       [values]
     );
+
+    // Synchronize photo_count for the event
+    if (photoRecords.length > 0 && photoRecords[0].eventId) {
+      try {
+        await pool.query(
+          'UPDATE events SET photo_count = (SELECT COUNT(*) FROM photos WHERE event_id = ?) WHERE id = ?',
+          [photoRecords[0].eventId, photoRecords[0].eventId]
+        );
+      } catch (cntErr) {
+        // Non-critical count sync note
+      }
+    }
+
     return photoRecords;
   },
 
@@ -366,6 +396,15 @@ export const AdminDAO = {
     await initDatabase();
     const [rows] = await pool.query('SELECT * FROM admins WHERE id = ?', [id]);
     return rows.length > 0 ? mapAdminFromDb(rows[0]) : null;
+  },
+
+  async create(admin) {
+    await initDatabase();
+    await pool.query(
+      'INSERT INTO admins (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)',
+      [admin.id, admin.email.toLowerCase().trim(), admin.passwordHash, admin.role || 'ADMIN', admin.createdAt || new Date().toISOString()]
+    );
+    return admin;
   }
 };
 
