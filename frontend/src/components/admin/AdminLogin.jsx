@@ -51,7 +51,7 @@ export default function AdminLogin({ onLoginSuccess }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-[#1c1c24] border border-[#2a2a36] text-white text-xs focus:border-[#d4af37] focus:outline-none"
-              placeholder="admin@ippuclicks.com"
+              placeholder=""
             />
           </div>
 
@@ -65,7 +65,7 @@ export default function AdminLogin({ onLoginSuccess }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-[#1c1c24] border border-[#2a2a36] text-white text-xs focus:border-[#d4af37] focus:outline-none"
-              placeholder="••••••••"
+              placeholder=""
             />
           </div>
 
