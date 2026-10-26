@@ -56,7 +56,7 @@ export async function extractAiDescriptors(imageBufferOrPath) {
     if (!ready || !faceapi) return [];
 
     const { data, info } = await sharp(imageBufferOrPath)
-      .resize(800, 800, { fit: 'inside' })
+      .resize(600, 600, { fit: 'inside', withoutEnlargement: true })
       .removeAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
