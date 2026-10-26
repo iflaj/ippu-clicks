@@ -87,19 +87,19 @@ export default function MasonryGallery({
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 pb-32">
+    <div className="w-full max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 py-3 sm:py-5 pb-36">
       {/* Access Type & Stats Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 p-4 sm:p-5 rounded-2xl bg-[#16161d] border border-[#2a2a36] shadow-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-5 rounded-2xl bg-[#16161d] border border-[#2a2a36] shadow-lg">
         <div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {accessType === 'FACE_FILTERED' ? (
               <>
                 <span className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm">
                   <UserCheckIcon className="w-3.5 h-3.5" />
-                  <span>Your Matched Photos ({photos.length})</span>
+                  <span>Your Photos ({photos.length})</span>
                 </span>
                 <span className="text-[10px] font-semibold text-neutral-400 bg-white/5 px-2.5 py-1 rounded-full border border-white/10">
-                  55%+ AI Face Match Filter
+                  55%+ AI Face Match
                 </span>
               </>
             ) : (
@@ -117,11 +117,11 @@ export default function MasonryGallery({
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {allowDownloads && photos.length > 0 && (
             <button
               onClick={selectAll}
-              className="px-3.5 py-2 text-xs font-bold rounded-xl bg-[#22222d] border border-[#2e2e3e] text-neutral-200 hover:text-white hover:border-[#d4af37]/40 transition active:scale-95 shadow-sm"
+              className="px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-bold rounded-xl bg-[#22222d] border border-[#2e2e3e] text-neutral-200 hover:text-white hover:border-[#d4af37]/40 transition active:scale-95 shadow-sm"
             >
               {selectedIds.size === photos.length ? 'Deselect All' : `Select All (${photos.length})`}
             </button>
@@ -129,7 +129,7 @@ export default function MasonryGallery({
 
           <button
             onClick={onResetAccess}
-            className="px-3.5 py-2 text-xs font-semibold rounded-xl bg-[#1c1c24] border border-[#2a2a36] text-neutral-300 hover:text-white hover:border-neutral-500 transition active:scale-95"
+            className="px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs font-semibold rounded-xl bg-[#1c1c24] border border-[#2a2a36] text-neutral-300 hover:text-white hover:border-neutral-500 transition active:scale-95"
           >
             Switch Access
           </button>
@@ -189,20 +189,20 @@ export default function MasonryGallery({
               {/* Selection Checkbox Overlay */}
               {allowDownloads && (
                 <div
-                  className="absolute top-3 right-3 z-10"
+                  className="absolute top-2 right-2 sm:top-3 sm:right-3 z-10 p-1"
                   onClick={(e) => {
                     e.stopPropagation();
                     toggleSelect(photo.id);
                   }}
                 >
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-lg ${
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all shadow-lg ${
                       isSelected
                         ? 'bg-[#d4af37] text-black scale-105'
                         : 'bg-black/60 backdrop-blur-md text-transparent border border-white/50 hover:border-white hover:scale-105'
                     }`}
                   >
-                    <CheckIcon className="w-4 h-4" />
+                    <CheckIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
                 </div>
               )}
@@ -210,7 +210,7 @@ export default function MasonryGallery({
               {/* Confidence Badge for Face Filtered */}
               {photo.matchConfidence && (
                 <div
-                  className={`absolute bottom-3 left-3 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-extrabold shadow-lg ${
+                  className={`absolute bottom-2 left-2 sm:bottom-3 sm:left-3 backdrop-blur-md px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg text-[9px] sm:text-[10px] font-extrabold shadow-lg ${
                     photo.matchConfidence >= 80
                       ? 'bg-emerald-950/90 border border-emerald-500/60 text-emerald-300'
                       : photo.matchConfidence >= 65
@@ -228,7 +228,7 @@ export default function MasonryGallery({
 
       {/* Floating Action Bar for Downloads (Optimized for PC & Mobile) */}
       {allowDownloads && photos.length > 0 && (
-        <div className="fixed bottom-14 left-0 right-0 z-30 px-4 pointer-events-none">
+        <div className="fixed bottom-14 sm:bottom-16 left-0 right-0 z-30 px-3 sm:px-4 pointer-events-none">
           <div className="max-w-md mx-auto pointer-events-auto bg-[#181820]/95 backdrop-blur-xl border border-[#333344] rounded-2xl p-2.5 shadow-[0_15px_35px_rgba(0,0,0,0.8)] flex items-center justify-between gap-3">
             <span className="text-xs font-semibold text-neutral-300 pl-2">
               {selectedIds.size > 0 ? (

@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import sharp from 'sharp';
 import archiver from 'archiver';
 import { EventDAO, PhotoDAO } from '../data/db.js';
-import { matchPhotosByFace, extractAiDescriptors, extractFeatureDescriptors, extractFeatureDescriptor } from '../services/faceService.js';
+import { matchPhotosByFace, extractAiDescriptors, extractFeatureDescriptors, extractFeatureDescriptor, isAiReady } from '../services/faceService.js';
 import { applyWatermark } from '../services/watermarkService.js';
 import { UPLOADS_DIR } from '../config/index.js';
 
@@ -14,7 +14,7 @@ import { UPLOADS_DIR } from '../config/index.js';
 export async function uploadEventPhotos(req, res) {
   try {
     const { eventId } = req.params;
-    const event = EventDAO.getById(eventId);
+    const event = await EventDAO.getById(eventId);
     if (!event) {
       return res.status(404).json({ error: 'Event not found.' });
     }
@@ -34,14 +34,14 @@ export async function uploadEventPhotos(req, res) {
     }
 
     // Determine watermark settings for this event
-    const customWatermarkPath = event.watermarkFilename
-      ? path.join(eventUploadDir, event.watermarkFilename)
-      : (fs.existsSync(path.join(eventUploadDir, 'watermark.png')) ? path.join(eventUploadDir, 'watermark.png') : null);
+    const hasValidPngFilename = event.watermarkFilename && event.watermarkFilename !== 'null' && event.watermarkFilename !== '';
+    const customWatermarkPath = hasValidPngFilename ? path.join(eventUploadDir, event.watermarkFilename) : null;
 
     const wmConfig = {
       enableWatermark: event.enableWatermark !== undefined ? Boolean(event.enableWatermark) : true,
+      watermarkType: event.watermarkType || (hasValidPngFilename ? 'png' : 'badge'),
       watermarkPath: customWatermarkPath,
-      watermarkText: event.watermarkText || event.name || '© Ippu Clicks Photography',
+      watermarkText: event.watermarkText || '© Ippu Clicks Photography • 0759125207',
       position: event.watermarkPosition || 'bottom-right',
       scalePercent: event.watermarkScale || 22,
       opacityPercent: event.watermarkOpacity || 90
@@ -77,9 +77,11 @@ export async function uploadEventPhotos(req, res) {
         const aiDescs = await extractAiDescriptors(file.path);
         if (aiDescs && aiDescs.length > 0) {
           storedDescriptors = aiDescs;
-        } else {
+        } else if (!isAiReady()) {
           const descs = await extractFeatureDescriptors(file.path);
           storedDescriptors = descs || [];
+        } else {
+          storedDescriptors = [];
         }
       } else if (!Array.isArray(storedDescriptors[0])) {
         storedDescriptors = [storedDescriptors];
@@ -118,7 +120,7 @@ export async function uploadEventPhotos(req, res) {
       });
     }
 
-    PhotoDAO.createMany(photoRecords);
+    await PhotoDAO.createMany(photoRecords);
 
     return res.status(201).json({
       message: `Successfully uploaded ${photoRecords.length} photos.`,
@@ -137,7 +139,7 @@ export async function uploadEventPhotos(req, res) {
 export async function deletePhoto(req, res) {
   try {
     const { photoId } = req.params;
-    const photo = PhotoDAO.getById(photoId);
+    const photo = await PhotoDAO.getById(photoId);
     if (!photo) return res.status(404).json({ error: 'Photo not found.' });
 
     // Remove from disk
@@ -148,7 +150,7 @@ export async function deletePhoto(req, res) {
     if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath);
     if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
 
-    PhotoDAO.delete(photoId);
+    await PhotoDAO.delete(photoId);
     return res.json({ message: 'Photo deleted successfully.' });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to delete photo.' });
@@ -163,7 +165,7 @@ export async function deletePhoto(req, res) {
 export async function matchClientFace(req, res) {
   try {
     const { slug } = req.params;
-    const event = EventDAO.getBySlug(slug);
+    const event = await EventDAO.getBySlug(slug);
     if (!event) return res.status(404).json({ error: 'Event not found.' });
 
     let queryDescriptor = null;
@@ -171,23 +173,46 @@ export async function matchClientFace(req, res) {
     // Client pre-extracted descriptor
     if (req.body.descriptor) {
       try {
-        queryDescriptor = typeof req.body.descriptor === 'string'
+        const parsed = typeof req.body.descriptor === 'string'
           ? JSON.parse(req.body.descriptor)
           : req.body.descriptor;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          queryDescriptor = parsed;
+        }
       } catch (e) {}
     }
 
-    // Extract deep AI descriptor or multi-angle descriptors from uploaded selfie buffer if not provided
-    if (!queryDescriptor && req.file && req.file.buffer) {
-      const aiDescs = await extractAiDescriptors(req.file.buffer);
-      if (aiDescs && aiDescs.length > 0) {
-        queryDescriptor = aiDescs;
-      } else {
-        queryDescriptor = await extractFeatureDescriptors(req.file.buffer);
+    // Extract deep AI descriptor or multi-angle descriptors from uploaded selfie buffer, file, or base64
+    if (!queryDescriptor && req.file) {
+      const source = req.file.buffer || req.file.path;
+      if (source) {
+        const aiDescs = await extractAiDescriptors(source);
+        if (aiDescs && aiDescs.length > 0) {
+          queryDescriptor = aiDescs;
+        } else if (!isAiReady()) {
+          queryDescriptor = await extractFeatureDescriptors(source);
+        }
       }
     }
 
-    const eventPhotos = PhotoDAO.getByEvent(event.id);
+    if (!queryDescriptor && (req.body.selfieBase64 || (typeof req.body.selfie === 'string' && req.body.selfie.startsWith('data:image')))) {
+      try {
+        const base64Str = req.body.selfieBase64 || req.body.selfie;
+        const b64Data = base64Str.replace(/^data:image\/\w+;base64,/, '');
+        const buf = Buffer.from(b64Data, 'base64');
+        const aiDescs = await extractAiDescriptors(buf);
+        if (aiDescs && aiDescs.length > 0) {
+          queryDescriptor = aiDescs;
+        } else if (!isAiReady()) {
+          queryDescriptor = await extractFeatureDescriptors(buf);
+        }
+      } catch (e) {
+        console.warn('Failed to parse base64 selfie:', e.message);
+      }
+    }
+
+    // Load descriptors specifically for matching
+    const eventPhotos = await PhotoDAO.getByEvent(event.id, true);
 
     if (eventPhotos.length === 0) {
       return res.json({
@@ -199,8 +224,19 @@ export async function matchClientFace(req, res) {
       });
     }
 
-    if (!queryDescriptor) {
-      return res.status(400).json({ error: 'No selfie image or facial descriptor was received.' });
+    let hasValidVectors = false;
+    if (Array.isArray(queryDescriptor) && queryDescriptor.length > 0) {
+      if (typeof queryDescriptor[0] === 'number' && (queryDescriptor.length === 128 || queryDescriptor.length === 280)) {
+        hasValidVectors = true;
+      } else if (Array.isArray(queryDescriptor[0])) {
+        hasValidVectors = queryDescriptor.some(v => Array.isArray(v) && (v.length === 128 || v.length === 280));
+      }
+    } else if (queryDescriptor && typeof queryDescriptor === 'object') {
+      hasValidVectors = Object.keys(queryDescriptor).length > 0;
+    }
+
+    if (!hasValidVectors) {
+      return res.status(400).json({ error: 'No face was detected in your selfie. Please face the camera directly in good lighting and try again.' });
     }
 
     // Match face against photos using calibrated threshold (default 55% confidence)
@@ -249,7 +285,7 @@ export async function downloadPhotosZip(req, res) {
     const { slug } = req.params;
     const { photoIds } = req.body;
 
-    const event = EventDAO.getBySlug(slug);
+    const event = await EventDAO.getBySlug(slug);
     if (!event) return res.status(404).json({ error: 'Event not found.' });
 
     // Strict Permission Guard
@@ -263,7 +299,7 @@ export async function downloadPhotosZip(req, res) {
       return res.status(400).json({ error: 'No photos selected for download.' });
     }
 
-    const photos = PhotoDAO.getByIds(photoIds).filter(p => p.eventId === event.id);
+    const photos = (await PhotoDAO.getByIds(photoIds)).filter(p => p.eventId === event.id);
 
     if (photos.length === 0) {
       return res.status(404).json({ error: 'Selected photos were not found.' });
@@ -278,10 +314,13 @@ export async function downloadPhotosZip(req, res) {
     archive.pipe(res);
 
     for (const photo of photos) {
-      // Prioritize raw pristine original uploaded photo (100% untouched quality, no re-compression)
+      // If watermarking is enabled on this event, serve the watermarked photo with brand label.
+      // If watermarking is disabled, serve the raw untouched photo.
       const rawPath = path.join(UPLOADS_DIR, photo.eventId, 'raw', photo.filename);
       const standardPath = path.join(UPLOADS_DIR, photo.eventId, photo.filename);
-      const downloadPath = fs.existsSync(rawPath) ? rawPath : standardPath;
+      const downloadPath = (event.enableWatermark !== false && fs.existsSync(standardPath))
+        ? standardPath
+        : (fs.existsSync(rawPath) ? rawPath : standardPath);
 
       if (fs.existsSync(downloadPath)) {
         archive.file(downloadPath, { name: photo.originalName || photo.filename });
@@ -302,22 +341,25 @@ export async function downloadPhotosZip(req, res) {
 export async function downloadSinglePhoto(req, res) {
   try {
     const { slug, photoId } = req.params;
-    const event = EventDAO.getBySlug(slug);
+    const event = await EventDAO.getBySlug(slug);
     if (!event) return res.status(404).json({ error: 'Event not found.' });
 
     if (!event.allowDownloads) {
       return res.status(403).json({ error: 'Downloads are disabled for this event.' });
     }
 
-    const photo = PhotoDAO.getById(photoId);
+    const photo = await PhotoDAO.getById(photoId);
     if (!photo || photo.eventId !== event.id) {
       return res.status(404).json({ error: 'Photo not found.' });
     }
 
-    // Serve the pristine, untouched original uploaded file from raw/ (100% upload quality)
+    // If watermarking is enabled on this event, serve the watermarked photo with brand label.
+    // If watermarking is disabled, serve the raw untouched photo.
     const rawPath = path.join(UPLOADS_DIR, event.id, 'raw', photo.filename);
     const standardPath = path.join(UPLOADS_DIR, event.id, photo.filename);
-    const downloadPath = fs.existsSync(rawPath) ? rawPath : standardPath;
+    const downloadPath = (event.enableWatermark !== false && fs.existsSync(standardPath))
+      ? standardPath
+      : (fs.existsSync(rawPath) ? rawPath : standardPath);
 
     if (!fs.existsSync(downloadPath)) {
       return res.status(404).json({ error: 'Photo file missing on server.' });

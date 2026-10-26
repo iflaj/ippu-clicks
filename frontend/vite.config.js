@@ -22,4 +22,22 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@vladmandic') || id.includes('face-api') || id.includes('tfjs')) {
+              return 'face-models';
+            }
+            if (id.includes('react')) {
+              return 'vendor-react';
+            }
+            return 'vendor-libs';
+          }
+        }
+      }
+    }
+  }
 })

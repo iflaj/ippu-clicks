@@ -8,7 +8,7 @@ branded QR codes, browse galleries, use the 55%+ AI face scanner (front & side
 profile), and download photos.
 
 This setup is 100% self-contained:
-- Database: Built-in local database (backend/src/data/database.json)
+- Database: High-performance MySQL database (cPanel MySQL / phpMyAdmin / local MySQL)
 - Photo Storage: Persistent storage on your Spaceship hosting disk
 - Zero external subscriptions needed (No AWS S3, no MongoDB Atlas required)
 - Both Frontend (React) and Backend (Node.js Express) can run together on a single domain!
@@ -110,29 +110,50 @@ STEP 3: CREATE THE NODE.JS APPLICATION IN SPACESHIP CPANEL
 4. Click "Create" (or "Save").
 
 --------------------------------------------------------------------------------
-STEP 4: SET ENVIRONMENT VARIABLES IN SPACESHIP
+STEP 4: SET ENVIRONMENT VARIABLES IN SPACESHIP (INCLUDING MYSQL)
 --------------------------------------------------------------------------------
-In the Node.js App settings page, scroll down to "Environment Variables"
-and click "Add Variable":
+In Spaceship cPanel, create a MySQL database and user:
+- Go to "MySQL Database Wizard" in cPanel
+- Database Name: e.g. youruser_ippuclicks
+- Username: e.g. youruser_dbuser
+- Password: create a strong password and save it
+- Privileges: Check "ALL PRIVILEGES"
+
+Then in the "Setup Node.js App" settings page, add these Environment Variables:
 
 1. Variable Name: PORT
-   Variable Value: (Leave empty or default; Passenger assigns it automatically)
+   Variable Value: (Leave empty; Passenger assigns it automatically)
 
 2. Variable Name: JWT_SECRET
    Variable Value: ippu_clicks_super_secret_production_key_2026
 
-3. Variable Name: INSTAGRAM_HANDLE
+3. Variable Name: CLIENT_BASE_URL
+   Variable Value: https://yourdomain.com
+   (Replace with your live domain name)
+
+4. Variable Name: DB_HOST
+   Variable Value: localhost
+
+5. Variable Name: DB_USER
+   Variable Value: youruser_dbuser
+
+6. Variable Name: DB_PASSWORD
+   Variable Value: your_mysql_password
+
+7. Variable Name: DB_NAME
+   Variable Value: youruser_ippuclicks
+
+8. Variable Name: INSTAGRAM_HANDLE
    Variable Value: ippu_clicks
 
-4. Variable Name: INSTAGRAM_URL
+9. Variable Name: INSTAGRAM_URL
    Variable Value: https://instagram.com/ippu_clicks
 
-5. Variable Name: CLIENT_BASE_URL
-   Variable Value: https://yourdomain.com
-   (Replace with your actual Spaceship domain name. This ensures all QR codes
-   link to your live domain!)
-
 Click "Save" to apply these environment variables.
+* NOTE: The system will automatically create all tables and auto-migrate existing
+  data on first launch! You can also import 'backend/src/data/schema.sql' in phpMyAdmin
+  or run 'npm run migrate:mysql' anytime.
+
 
 --------------------------------------------------------------------------------
 STEP 5: INSTALL DEPENDENCIES (NPM INSTALL)
@@ -248,18 +269,20 @@ Spaceship:
    Set CLIENT_BASE_URL = https://your-app.vercel.app
 
 ================================================================================
-5. HOW TO DOWNLOAD DATABASE BACKUPS
+5. HOW TO DOWNLOAD DATABASE BACKUPS & RESTORE
 ================================================================================
-All data is stored directly on your Spaceship disk in:
-backend/src/data/database.json
+All data is stored securely in your MySQL database:
+Database: ippu_clicks (or your cPanel MySQL database)
 
-To backup:
+To backup or restore:
 1. Go to your live Admin Portal:
    https://yourdomain.com/admin
 2. Log in with your admin credentials.
 3. Click the **[↓ Backup DB]** button in the top navigation bar.
-4. An instant JSON backup of all events, guest PINs, and photo descriptor indexes
-   will download to your computer.
+4. You have two backup options:
+   - "Download SQL Dump (.sql)" -> Standard MySQL dump importable in phpMyAdmin or CLI
+   - "Download JSON Backup (.json)" -> Application-level snapshot
+5. You can also restore your database anytime by clicking "Restore Database" in the modal.
 
 ================================================================================
 6. ADMIN LOGIN CREDENTIALS & SECURITY
@@ -270,7 +293,7 @@ Default Admin Credentials:
 - Password: admin123
 
 To change password or email:
-Edit backend/src/data/database.json or change via the Admin Dashboard.
+Change via the Admin Dashboard or execute an UPDATE query in your MySQL database.
 
 ================================================================================
 7. TROUBLESHOOTING COMMON SPACESHIP ISSUES
@@ -289,7 +312,7 @@ A: In Spaceship cPanel -> "Select PHP Version" or "MultiPHP INI Editor":
 Q: How do I re-run the 55%+ side-face indexing on Spaceship?
 A: Open cPanel Terminal, enter your Node environment, and run:
    node src/data/updatePhotoDescriptors.js
-   It will automatically re-index all uploaded photos in database.json.
+   It will automatically re-index all uploaded photos in the MySQL database.
 
 ================================================================================
 SUPPORT & CONTACT

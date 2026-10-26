@@ -42,12 +42,12 @@ export default function BrandHeader({ title, subtitle, showBack, onBack, bgVideo
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
           {onToggleBgVideo && (
             <button
               type="button"
               onClick={onToggleBgVideo}
-              className="text-[11px] px-2.5 py-1.5 rounded-full bg-[#1c1c24] hover:bg-[#252532] border border-[#2a2a36] hover:border-amber-500/40 text-neutral-300 hover:text-white transition flex items-center gap-1.5 shadow-sm"
+              className="text-[10px] sm:text-[11px] px-2 sm:px-2.5 py-1.5 rounded-full bg-[#1c1c24] hover:bg-[#252532] border border-[#2a2a36] hover:border-amber-500/40 text-neutral-300 hover:text-white transition flex items-center gap-1 shadow-sm flex-shrink-0"
               title="Toggle background video: Nature Stars Timelapse vs Camera Optical Bokeh"
             >
               <span>{bgVideo === 'bokeh' ? '📷 Bokeh' : '🌌 Nature'}</span>
@@ -58,10 +58,11 @@ export default function BrandHeader({ title, subtitle, showBack, onBack, bgVideo
             href="https://wa.me/254759125207"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-xs px-3 py-1.5 rounded-full bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/30 font-semibold flex items-center gap-1.5 hover:bg-[#25D366]/20 transition shadow-sm"
+            className="text-[11px] sm:text-xs px-2.5 sm:px-3 py-1.5 rounded-full bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/30 font-semibold flex items-center gap-1.5 hover:bg-[#25D366]/20 transition shadow-sm flex-shrink-0"
           >
-            <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse"></span>
-            <span>WhatsApp Support</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#25D366] animate-pulse"></span>
+            <span className="hidden sm:inline">WhatsApp Support</span>
+            <span className="sm:hidden">WhatsApp</span>
           </a>
         </div>
       </div>

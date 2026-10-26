@@ -373,55 +373,55 @@ export default function ClientAccessGate({ event, onAccessGranted }) {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-1 md:py-1.5 flex-1 flex flex-col justify-center min-h-0">
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 lg:gap-8 items-center">
+    <div className="w-full max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-2 md:py-3 flex-1 flex flex-col justify-center">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 lg:gap-8 items-center">
         {/* LEFT COLUMN: Event Details & Studio Prestige (Expands on PC, Compact on Mobile) */}
         <div className="md:col-span-5 space-y-2 text-center md:text-left">
-          <div className="inline-flex items-center gap-1.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-[#d4af37] bg-[#d4af37]/10 px-2.5 py-0.5 rounded-full border border-[#d4af37]/30">
+          <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#d4af37] bg-[#d4af37]/10 px-3 py-1 rounded-full border border-[#d4af37]/30">
             <span className="w-1.5 h-1.5 rounded-full bg-[#d4af37] animate-pulse"></span>
             <span>{event?.date || 'Private Event'}</span>
           </div>
 
           <div>
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-black text-white tracking-tight leading-tight">
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight">
               {event?.name || 'Exclusive Gallery'}
             </h2>
             {event?.details && (
-              <p className="text-[11px] sm:text-xs text-neutral-300 mt-1 leading-relaxed line-clamp-2 md:line-clamp-none">
+              <p className="text-xs sm:text-sm text-neutral-300 mt-1 leading-relaxed line-clamp-2 md:line-clamp-none">
                 {event.details}
               </p>
             )}
           </div>
 
           {/* Desktop Feature Badges (Visible on PC / Tablet, hidden on small mobile) */}
-          <div className="pt-0.5 space-y-1.5 hidden md:block">
-            <div className="flex items-center gap-2 p-1.5 rounded-xl bg-[#141418]/80 border border-[#262634] shadow-sm">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[#f7d070] flex items-center justify-center flex-shrink-0">
-                <CameraIcon className="w-3.5 h-3.5" />
+          <div className="pt-1 space-y-2 hidden md:block">
+            <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#141418]/80 border border-[#262634] shadow-sm">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[#f7d070] flex items-center justify-center flex-shrink-0">
+                <CameraIcon className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <p className="text-xs font-bold text-white">Live AI Face Scanner</p>
-                <p className="text-[9px] text-neutral-400">Real-time autofocus with 128-D neural recognition</p>
+                <p className="text-[10px] text-neutral-400">Real-time autofocus with 128-D neural recognition</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-1.5 rounded-xl bg-[#141418]/80 border border-[#262634] shadow-sm">
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">
-                <UserCheckIcon className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#141418]/80 border border-[#262634] shadow-sm">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                <UserCheckIcon className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <p className="text-xs font-bold text-white">Front & Side Profile Match</p>
-                <p className="text-[9px] text-neutral-400">Shows all photos matching from 55%+ confidence</p>
+                <p className="text-[10px] text-neutral-400">Shows all photos matching from 55%+ confidence</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-1.5 rounded-xl bg-[#141418]/80 border border-[#262634] shadow-sm">
-              <div className="w-7 h-7 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 flex items-center justify-center flex-shrink-0">
-                <KeyIcon className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-2.5 p-2 rounded-xl bg-[#141418]/80 border border-[#262634] shadow-sm">
+              <div className="w-8 h-8 rounded-lg bg-neutral-800 border border-neutral-700 text-neutral-300 flex items-center justify-center flex-shrink-0">
+                <KeyIcon className="w-4 h-4" />
               </div>
               <div className="text-left">
                 <p className="text-xs font-bold text-white">Host PIN Code Access</p>
-                <p className="text-[9px] text-neutral-400">Unlock and browse the entire event album</p>
+                <p className="text-[10px] text-neutral-400">Unlock and browse the entire event album</p>
               </div>
             </div>
           </div>
@@ -429,9 +429,9 @@ export default function ClientAccessGate({ event, onAccessGranted }) {
 
         {/* RIGHT COLUMN: Interactive Station (Scanner / PIN) */}
         <div className="md:col-span-7">
-          <div className="luxury-glass p-3 sm:p-4 md:p-5 rounded-2xl relative overflow-hidden">
+          <div className="luxury-glass p-3.5 sm:p-5 md:p-6 rounded-2xl relative overflow-hidden">
             {/* Quick Mode Toggle (AI Face Scan vs Host PIN) */}
-            <div className="flex bg-[#141418] p-0.5 rounded-lg border border-[#2a2a36] mb-2 shadow-inner">
+            <div className="flex bg-[#141418] p-1 rounded-xl border border-[#2a2a36] mb-3 shadow-inner">
               <button
                 type="button"
                 onClick={() => handleSelectMode('FACE_SCAN')}
@@ -621,30 +621,29 @@ export default function ClientAccessGate({ event, onAccessGranted }) {
               </button>
             )}
 
-            {/* Quick helper links below the capture button */}
-            <div className="flex items-center justify-center gap-3 pt-0.5 text-[11px]">
+            {/* Quick helper action pills for mobile and desktop */}
+            <div className="grid grid-cols-2 gap-2 pt-1 w-full text-xs">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isProcessingFace}
-                className="text-neutral-400 hover:text-white transition flex items-center gap-1 underline underline-offset-4 decoration-neutral-700 hover:decoration-amber-400"
+                className="py-2 px-3 rounded-xl bg-[#1c1c24] hover:bg-[#252532] border border-[#2e2e3e] hover:border-neutral-500 text-neutral-300 hover:text-white transition flex items-center justify-center gap-1.5 text-xs font-semibold active:scale-95 shadow-sm"
               >
-                <span>📁 Upload from gallery</span>
+                <span>📁 Upload Photo</span>
               </button>
-              <span className="text-neutral-700">•</span>
               <button
                 type="button"
                 onClick={() => handleSelectMode('PIN_ENTRY')}
-                className="text-neutral-400 hover:text-[#f7d070] transition flex items-center gap-1 underline underline-offset-4 decoration-neutral-700 hover:decoration-amber-400"
+                className="py-2 px-3 rounded-xl bg-[#1c1c24] hover:bg-[#252532] border border-[#2e2e3e] hover:border-[#d4af37]/50 text-[#f7d070] hover:text-amber-300 transition flex items-center justify-center gap-1.5 text-xs font-semibold active:scale-95 shadow-sm"
               >
-                <span>🔑 Enter Event PIN</span>
+                <span>🔑 Enter PIN</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* VIEW 2: PIN ENTRY (OLD OPTION - FULL ALBUM ACCESS) */}
+      {/* VIEW 2: PIN ENTRY (FULL ALBUM ACCESS) */}
       {mode === 'PIN_ENTRY' && (
         <div className="space-y-3 animate-fade-in">
           <div className="text-center">
@@ -657,12 +656,12 @@ export default function ClientAccessGate({ event, onAccessGranted }) {
             </p>
           </div>
 
-          {/* PIN Display Boxes */}
-          <div className="flex justify-center space-x-2 my-2">
+          {/* PIN Display Boxes - Responsive for all mobile screens */}
+          <div className="flex justify-center space-x-1.5 sm:space-x-2 my-2">
             {[0, 1, 2, 3, 4, 5].map((idx) => (
               <div
                 key={idx}
-                className={`w-9 h-11 rounded-lg border flex items-center justify-center text-lg font-black font-mono transition-all ${
+                className={`w-8 h-10 sm:w-9 sm:h-11 rounded-lg border flex items-center justify-center text-lg font-black font-mono transition-all ${
                   pin[idx]
                     ? 'border-[#d4af37] bg-[#d4af37]/15 text-[#f7d070] shadow-md shadow-amber-500/10'
                     : 'border-[#2a2a36] bg-[#141418] text-neutral-600'

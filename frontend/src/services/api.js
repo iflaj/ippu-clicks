@@ -210,19 +210,34 @@ export const adminApi = {
     return handleResponse(res, 'Failed to delete photo');
   },
 
-  async downloadBackup() {
-    const res = await fetch(`${API_BASE}/admin/database/backup`, {
+  async downloadBackup(format = 'json') {
+    const res = await fetch(`${API_BASE}/admin/database/backup?format=${format}`, {
       headers: { Authorization: `Bearer ${this.getToken()}` },
     });
-    if (!res.ok) throw new Error('Failed to download backup');
+    if (!res.ok) throw new Error('Failed to download database backup');
     const blob = await res.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `IppuClicks_DB_Backup_${Date.now()}.json`;
+    const dateStr = new Date().toISOString().split('T')[0];
+    a.download = `IppuClicks_DB_Backup_${dateStr}.${format === 'sql' ? 'sql' : 'json'}`;
     document.body.appendChild(a);
     a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
+    setTimeout(() => {
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    }, 1500);
+  },
+
+  async restoreBackup(backupData) {
+    const res = await fetch(`${API_BASE}/admin/database/restore`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.getToken()}`,
+      },
+      body: JSON.stringify(backupData),
+    });
+    return handleResponse(res, 'Database restore failed');
   },
 };

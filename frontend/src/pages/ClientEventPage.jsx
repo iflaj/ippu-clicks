@@ -57,12 +57,12 @@ export default function ClientEventPage({ slug = 'sample-event' }) {
   const videoSrc = bgVideo === 'bokeh' ? '/videos/camera-bokeh.webm' : '/videos/nature-stars.webm';
 
   return (
-    <div className={`min-h-screen ${!accessState ? 'h-screen max-h-screen overflow-hidden' : ''} flex flex-col justify-between bg-[#0a0a0c] text-white relative`}>
+    <div className="min-h-[100dvh] flex flex-col justify-between bg-[#0a0a0c] text-white relative overflow-x-hidden">
       {/* 0. Ambient Looping Background Video (Photography / Nature) */}
       <BackgroundVideo videoSrc={videoSrc} />
 
       {/* 1. Brand Header */}
-      <div className="relative z-10 flex-shrink-0">
+      <div className="relative z-20 flex-shrink-0">
         <BrandHeader
           subtitle={event ? `${event.name}` : 'Event Photography'}
           showBack={Boolean(accessState)}
@@ -80,7 +80,7 @@ export default function ClientEventPage({ slug = 'sample-event' }) {
       />
 
       {/* 3. Main Body */}
-      <main className="flex-1 flex flex-col justify-center min-h-0 relative z-10 overflow-hidden">
+      <main className="flex-1 flex flex-col justify-center relative z-10 py-2 sm:py-4">
         {loading && (
           <div className="flex-1 flex flex-col items-center justify-center p-8">
             <div className="w-10 h-10 border-3 border-[#d4af37] border-t-transparent rounded-full animate-spin mb-3"></div>

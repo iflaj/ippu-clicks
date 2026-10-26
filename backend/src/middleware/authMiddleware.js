@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { CONFIG } from '../config/index.js';
 import { AdminDAO } from '../data/db.js';
 
-export function requireAdminAuth(req, res, next) {
+export async function requireAdminAuth(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -12,7 +12,7 @@ export function requireAdminAuth(req, res, next) {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, CONFIG.jwtSecret);
 
-    const admin = AdminDAO.findById(decoded.id);
+    const admin = await AdminDAO.findById(decoded.id);
     if (!admin || admin.role !== 'ADMIN') {
       return res.status(403).json({ error: 'Forbidden: Insufficient privileges.' });
     }

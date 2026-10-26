@@ -1,5 +1,5 @@
 import express from 'express';
-import { loginAdmin, getAdminProfile, downloadDatabaseBackup } from '../controllers/authController.js';
+import { loginAdmin, getAdminProfile, downloadDatabaseBackup, restoreDatabaseBackup } from '../controllers/authController.js';
 import {
   createEvent,
   getAllEvents,
@@ -27,6 +27,7 @@ router.use(requireAdminAuth);
 
 router.get('/me', getAdminProfile);
 router.get('/database/backup', downloadDatabaseBackup);
+router.post('/database/restore', restoreDatabaseBackup);
 router.get('/events', getAllEvents);
 router.post('/events', createEvent);
 router.get('/events/:id', getEventById);

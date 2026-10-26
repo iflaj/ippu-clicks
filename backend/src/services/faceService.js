@@ -39,6 +39,10 @@ export async function ensureAiModelsLoaded() {
   return aiModelsLoadingPromise;
 }
 
+export function isAiReady() {
+  return aiModelsLoaded;
+}
+
 /**
  * Extracts 128-D deep neural network facial descriptor using FaceNet.
  * Supports front and side profile detection.
@@ -52,17 +56,32 @@ export async function extractAiDescriptors(imageBufferOrPath) {
     if (!ready || !faceapi) return [];
 
     const { data, info } = await sharp(imageBufferOrPath)
-      .resize(600, 600, { fit: 'inside' })
+      .resize(800, 800, { fit: 'inside' })
       .removeAlpha()
       .raw()
       .toBuffer({ resolveWithObject: true });
 
     const tensor = faceapi.tf.tensor3d(new Uint8Array(data), [info.height, info.width, 3]);
-    const detection = await faceapi.detectSingleFace(tensor).withFaceLandmarks().withFaceDescriptor();
+
+    // 1. Detect all faces in photo so group & candid shots index all individuals
+    let detections = await faceapi.detectAllFaces(tensor).withFaceLandmarks().withFaceDescriptors();
+
+    // 2. Fallback to single face with lower sensitivity threshold if no faces found
+    if (!detections || detections.length === 0) {
+      const single = await faceapi.detectSingleFace(tensor, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 }))
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+      if (single) {
+        detections = [single];
+      }
+    }
+
     tensor.dispose();
 
-    if (detection && detection.descriptor) {
-      return [Array.from(detection.descriptor)];
+    if (detections && detections.length > 0) {
+      return detections
+        .map((d) => Array.from(d.descriptor))
+        .filter((desc) => Array.isArray(desc) && desc.length === 128);
     }
     return [];
   } catch (err) {
@@ -205,7 +224,7 @@ export async function extractFeatureDescriptor(imageBufferOrPath) {
  * Calculates Euclidean distance between two vectors.
  */
 export function euclideanDistance(descA, descB) {
-  if (!descA || !descB || descA.length !== descB.length) {
+  if (!descA || !descB || !descA.length || descA.length !== descB.length) {
     return Infinity;
   }
   let sum = 0;
@@ -230,15 +249,17 @@ export function matchPhotosByFace(queryDescriptor, eventPhotos, minConfidence = 
   if (!queryDescriptor) return [];
 
   // Normalize query to an array of descriptor vectors
-  let queryList = [];
+  let rawQuery = [];
   if (Array.isArray(queryDescriptor) && queryDescriptor.length > 0) {
     if (Array.isArray(queryDescriptor[0])) {
-      queryList = queryDescriptor;
+      rawQuery = queryDescriptor;
     } else {
-      queryList = [queryDescriptor];
+      rawQuery = [queryDescriptor];
     }
   }
 
+  // Filter out any empty, non-vector, or invalid vectors (must have 128 or 280 dimensions)
+  const queryList = rawQuery.filter((q) => Array.isArray(q) && (q.length === 128 || q.length === 280));
   if (queryList.length === 0) return [];
 
   const matches = [];
@@ -250,13 +271,16 @@ export function matchPhotosByFace(queryDescriptor, eventPhotos, minConfidence = 
       continue;
     }
 
-    // Normalize stored photo descriptors
-    let storedList = [];
+    // Normalize stored photo descriptors and filter valid vectors
+    let rawStored = [];
     if (Array.isArray(photo.faceDescriptors[0])) {
-      storedList = photo.faceDescriptors;
+      rawStored = photo.faceDescriptors;
     } else {
-      storedList = [photo.faceDescriptors];
+      rawStored = [photo.faceDescriptors];
     }
+
+    const storedList = rawStored.filter((s) => Array.isArray(s) && (s.length === 128 || s.length === 280));
+    if (storedList.length === 0) continue;
 
     let minDistance = Infinity;
     let is128D = false;

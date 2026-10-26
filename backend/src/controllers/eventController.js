@@ -37,7 +37,7 @@ export async function createEvent(req, res) {
     const pin = (customPin && String(customPin).trim()) ? String(customPin).trim() : generateRandomPin();
 
     // Check PIN uniqueness
-    const existingPin = EventDAO.getByPin(pin);
+    const existingPin = await EventDAO.getByPin(pin);
     if (existingPin) {
       return res.status(409).json({ error: 'This PIN is already assigned to another event. Please choose another.' });
     }
@@ -79,6 +79,7 @@ export async function createEvent(req, res) {
       clientEventUrl,
       allowDownloads: allowDownloads !== undefined ? Boolean(allowDownloads) : true,
       enableWatermark: enableWatermark !== undefined ? Boolean(enableWatermark) : true,
+      watermarkType: watermarkBase64 ? 'png' : 'badge',
       watermarkUrl,
       watermarkFilename,
       watermarkPosition: watermarkPosition || 'bottom-right',
@@ -90,7 +91,7 @@ export async function createEvent(req, res) {
       createdAt: new Date().toISOString()
     };
 
-    const savedEvent = EventDAO.create(eventRecord);
+    const savedEvent = await EventDAO.create(eventRecord);
 
     return res.status(201).json({
       message: 'Event created successfully',
@@ -104,16 +105,24 @@ export async function createEvent(req, res) {
 
 
 /**
- * ADMIN: Get all events
+ * ADMIN: Get all events (High speed query with photo count included)
  */
 export async function getAllEvents(req, res) {
   try {
-    const events = EventDAO.getAll();
-    const enriched = events.map(evt => ({
-      ...evt,
-      photoCount: PhotoDAO.getByEvent(evt.id).length
-    }));
-    return res.json({ events: enriched });
+    const events = await EventDAO.getAll();
+    for (const evt of events) {
+      if (!evt.qrCodeDataUrl) {
+        try {
+          const clientUrl = evt.clientEventUrl || `${CONFIG.clientBaseUrl}/event/${evt.publicSlug}`;
+          const { dataUrl } = await generateBrandedQR(clientUrl);
+          evt.qrCodeDataUrl = dataUrl;
+          await EventDAO.update(evt.id, { qrCodeDataUrl: dataUrl });
+        } catch (e) {
+          console.warn('Failed to auto-heal QR for event:', evt.id, e);
+        }
+      }
+    }
+    return res.json({ events });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to retrieve events.' });
   }
@@ -125,10 +134,22 @@ export async function getAllEvents(req, res) {
 export async function getEventById(req, res) {
   try {
     const { id } = req.params;
-    const event = EventDAO.getById(id);
+    const event = await EventDAO.getById(id);
     if (!event) return res.status(404).json({ error: 'Event not found.' });
 
-    const photos = PhotoDAO.getByEvent(id);
+    if (!event.qrCodeDataUrl) {
+      try {
+        const clientUrl = event.clientEventUrl || `${CONFIG.clientBaseUrl}/event/${event.publicSlug}`;
+        const { dataUrl } = await generateBrandedQR(clientUrl);
+        event.qrCodeDataUrl = dataUrl;
+        await EventDAO.update(event.id, { qrCodeDataUrl: dataUrl });
+      } catch (e) {
+        console.warn('Failed to auto-heal QR for event:', event.id, e);
+      }
+    }
+
+    // Exclude heavy facial descriptors for ultra-fast payload transfer
+    const photos = await PhotoDAO.getByEvent(id, false);
     return res.json({ event, photos });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to retrieve event.' });
@@ -152,10 +173,13 @@ export async function updateEvent(req, res) {
       watermarkPosition,
       watermarkScale,
       watermarkOpacity,
-      watermarkBase64
+      watermarkBase64,
+      watermarkType,
+      removeWatermarkPng,
+      reapplyImmediately
     } = req.body;
 
-    const existing = EventDAO.getById(id);
+    const existing = await EventDAO.getById(id);
     if (!existing) return res.status(404).json({ error: 'Event not found.' });
 
     const updates = {};
@@ -169,6 +193,19 @@ export async function updateEvent(req, res) {
     if (watermarkPosition !== undefined) updates.watermarkPosition = watermarkPosition;
     if (watermarkScale !== undefined) updates.watermarkScale = Number(watermarkScale);
     if (watermarkOpacity !== undefined) updates.watermarkOpacity = Number(watermarkOpacity);
+    if (watermarkType !== undefined) updates.watermarkType = watermarkType;
+
+    // Support removing custom PNG watermark to switch back to Brand Label
+    if (removeWatermarkPng) {
+      const eventUploadDir = path.join(UPLOADS_DIR, id);
+      const wmPath = path.join(eventUploadDir, 'watermark.png');
+      if (fs.existsSync(wmPath)) {
+        try { fs.unlinkSync(wmPath); } catch (e) {}
+      }
+      updates.watermarkFilename = null;
+      updates.watermarkUrl = null;
+      updates.watermarkType = 'badge';
+    }
 
     if (watermarkBase64) {
       const eventUploadDir = path.join(UPLOADS_DIR, id);
@@ -181,11 +218,23 @@ export async function updateEvent(req, res) {
       fs.writeFileSync(wmPath, wmBuffer);
       updates.watermarkFilename = 'watermark.png';
       updates.watermarkUrl = `/uploads/${id}/watermark.png`;
+      updates.watermarkType = 'png';
     }
 
-    const updated = EventDAO.update(id, updates);
-    return res.json({ message: 'Event updated successfully', event: updated });
+    const updated = await EventDAO.update(id, updates);
+
+    let reapplyResult = null;
+    if (reapplyImmediately || req.body.reapplyWatermark) {
+      reapplyResult = await reapplyWatermarkToEvent(updated);
+    }
+
+    return res.json({
+      message: 'Event updated successfully',
+      event: updated,
+      reapplyResult
+    });
   } catch (error) {
+    console.error('Update event error:', error);
     return res.status(500).json({ error: 'Failed to update event.' });
   }
 }
@@ -197,7 +246,7 @@ export async function updateEvent(req, res) {
 export async function uploadEventWatermark(req, res) {
   try {
     const { id } = req.params;
-    const event = EventDAO.getById(id);
+    const event = await EventDAO.getById(id);
     if (!event) return res.status(404).json({ error: 'Event not found.' });
 
     const eventUploadDir = path.join(UPLOADS_DIR, id);
@@ -213,6 +262,7 @@ export async function uploadEventWatermark(req, res) {
     if (req.body.watermarkScale) updates.watermarkScale = Number(req.body.watermarkScale);
     if (req.body.watermarkOpacity) updates.watermarkOpacity = Number(req.body.watermarkOpacity);
     if (req.body.watermarkText) updates.watermarkText = req.body.watermarkText.trim();
+    updates.watermarkType = 'png';
 
     if (req.file && req.file.buffer) {
       const wmPath = path.join(eventUploadDir, 'watermark.png');
@@ -227,10 +277,13 @@ export async function uploadEventWatermark(req, res) {
       updates.watermarkUrl = `/uploads/${id}/watermark.png`;
     }
 
-    const updated = EventDAO.update(id, updates);
+    const updated = await EventDAO.update(id, updates);
+    const reapplyResult = await reapplyWatermarkToEvent(updated);
+
     return res.json({
-      message: 'Event watermark updated successfully',
-      event: updated
+      message: 'Event watermark uploaded and applied to photos successfully!',
+      event: updated,
+      reapplyResult
     });
   } catch (error) {
     console.error('Error uploading watermark:', error);
@@ -245,13 +298,15 @@ export async function uploadEventWatermark(req, res) {
 export async function reapplyEventWatermark(req, res) {
   try {
     const { id } = req.params;
-    const event = EventDAO.getById(id);
+    const event = await EventDAO.getById(id);
     if (!event) return res.status(404).json({ error: 'Event not found.' });
 
     const result = await reapplyWatermarkToEvent(event);
 
     return res.json({
       message: `Successfully reapplied watermark to ${result.updated} of ${result.total} photos.`,
+      total: result.total,
+      updated: result.updated,
       result
     });
   } catch (error) {
@@ -269,7 +324,7 @@ export async function toggleDownloads(req, res) {
     const { id } = req.params;
     const { allowDownloads } = req.body;
 
-    const updated = EventDAO.update(id, { allowDownloads: Boolean(allowDownloads) });
+    const updated = await EventDAO.update(id, { allowDownloads: Boolean(allowDownloads) });
     if (!updated) return res.status(404).json({ error: 'Event not found.' });
 
     return res.json({
@@ -287,7 +342,7 @@ export async function toggleDownloads(req, res) {
 export async function deleteEvent(req, res) {
   try {
     const { id } = req.params;
-    const success = EventDAO.delete(id);
+    const success = await EventDAO.delete(id);
     if (!success) return res.status(404).json({ error: 'Event not found.' });
 
     return res.json({ message: 'Event and associated media deleted successfully.' });
@@ -302,12 +357,23 @@ export async function deleteEvent(req, res) {
 export async function getClientEvent(req, res) {
   try {
     const { slug } = req.params;
-    const event = EventDAO.getBySlug(slug);
+    const event = await EventDAO.getBySlug(slug);
     if (!event) {
       return res.status(404).json({ error: 'Event not found or has expired.' });
     }
 
-    const photoCount = PhotoDAO.getByEvent(event.id).length;
+    if (!event.qrCodeDataUrl) {
+      try {
+        const clientUrl = event.clientEventUrl || `${CONFIG.clientBaseUrl}/event/${event.publicSlug}`;
+        const { dataUrl } = await generateBrandedQR(clientUrl);
+        event.qrCodeDataUrl = dataUrl;
+        await EventDAO.update(event.id, { qrCodeDataUrl: dataUrl });
+      } catch (e) {
+        console.warn('Failed to auto-heal QR for event:', event.id, e);
+      }
+    }
+
+    const photoCount = event.photoCount !== undefined ? event.photoCount : (await PhotoDAO.getByEvent(event.id, false)).length;
 
     // Return safe public fields only
     return res.json({
@@ -316,8 +382,10 @@ export async function getClientEvent(req, res) {
       date: event.date,
       details: event.details,
       publicSlug: event.publicSlug,
+      clientEventUrl: event.clientEventUrl || `${CONFIG.clientBaseUrl}/event/${event.publicSlug}`,
       allowDownloads: event.allowDownloads,
       photoCount,
+      qrCodeDataUrl: event.qrCodeDataUrl,
       branding: {
         brandName: CONFIG.brandName,
         bookingPhone: CONFIG.bookingPhone,
@@ -339,15 +407,15 @@ export async function verifyClientPin(req, res) {
     const { slug } = req.params;
     const { pin } = req.body;
 
-    const event = EventDAO.getBySlug(slug);
+    const event = await EventDAO.getBySlug(slug);
     if (!event) return res.status(404).json({ error: 'Event not found.' });
 
     if (String(event.pin).trim() !== String(pin).trim()) {
       return res.status(401).json({ error: 'Incorrect Event PIN. Please check and try again.' });
     }
 
-    // Return all event photos
-    const photos = PhotoDAO.getByEvent(event.id);
+    // Return all event photos without heavy descriptors for maximum speed
+    const photos = await PhotoDAO.getByEvent(event.id, false);
 
     return res.json({
       success: true,
