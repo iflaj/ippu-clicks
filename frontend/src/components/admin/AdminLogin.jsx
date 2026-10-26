@@ -3,8 +3,8 @@ import { LockIcon } from '../common/Icons';
 import { adminApi } from '../../services/api';
 
 export default function AdminLogin({ onLoginSuccess }) {
-  const [email, setEmail] = useState('admin@ippuclicks.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,7 +40,7 @@ export default function AdminLogin({ onLoginSuccess }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-wider text-neutral-400 mb-1">
               Admin Email
@@ -52,6 +52,7 @@ export default function AdminLogin({ onLoginSuccess }) {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-[#1c1c24] border border-[#2a2a36] text-white text-xs focus:border-[#d4af37] focus:outline-none"
               placeholder=""
+              autoComplete="off"
             />
           </div>
 
@@ -66,6 +67,7 @@ export default function AdminLogin({ onLoginSuccess }) {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl bg-[#1c1c24] border border-[#2a2a36] text-white text-xs focus:border-[#d4af37] focus:outline-none"
               placeholder=""
+              autoComplete="new-password"
             />
           </div>
 
