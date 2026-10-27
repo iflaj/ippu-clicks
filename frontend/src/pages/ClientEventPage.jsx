@@ -23,86 +23,35 @@ export default function ClientEventPage({ slug = 'sample-event' }) {
     localStorage.setItem('ippu_bg_video', next);
   };
 
-  // Clean slug
-  const cleanSlug = String(slug || '').trim().replace(/\/+$/, '');
-
   // Instagram Prompt State (Shows immediately upon landing)
   const [showInstagram, setShowInstagram] = useState(true);
 
-  // Gallery Access State - persist across page refresh for the same event slug
-  const [accessState, setAccessState] = useState(() => {
-    if (!cleanSlug) return null;
-    try {
-      const cached = sessionStorage.getItem(`ippu_access_${cleanSlug}`);
-      return cached ? JSON.parse(cached) : null;
-    } catch (e) {
-      return null;
-    }
-  });
-
-  // Keep accessState in sync if slug changes
-  useEffect(() => {
-    if (!cleanSlug) {
-      setAccessState(null);
-      return;
-    }
-    try {
-      const cached = sessionStorage.getItem(`ippu_access_${cleanSlug}`);
-      setAccessState(cached ? JSON.parse(cached) : null);
-    } catch (e) {
-      setAccessState(null);
-    }
-  }, [cleanSlug]);
+  // Gallery Access State
+  const [accessState, setAccessState] = useState(null);
+  // accessState = { accessType: 'FACE_FILTERED' | 'ALL_PHOTOS', photos: [], allowDownloads: boolean }
 
   useEffect(() => {
-    let isCurrent = true;
-
     async function loadEvent() {
-      if (!cleanSlug) {
-        setError('No event specified.');
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
         setError('');
-        const data = await clientApi.getEvent(cleanSlug);
-        if (!isCurrent) return;
+        const data = await clientApi.getEvent(slug);
         setEvent(data);
       } catch (err) {
-        if (!isCurrent) return;
         setError(err.message || 'Event not found');
       } finally {
-        if (isCurrent) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     }
-
     loadEvent();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [cleanSlug]);
+  }, [slug]);
 
   const handleAccessGranted = (grantedData) => {
     setAccessState(grantedData);
-    if (cleanSlug) {
-      try {
-        sessionStorage.setItem(`ippu_access_${cleanSlug}`, JSON.stringify(grantedData));
-      } catch (e) {}
-    }
   };
 
   const handleResetAccess = () => {
     setAccessState(null);
-    if (cleanSlug) {
-      try {
-        sessionStorage.removeItem(`ippu_access_${cleanSlug}`);
-      } catch (e) {}
-    }
   };
 
   const videoSrc = bgVideo === 'bokeh' ? '/videos/camera-bokeh.webm' : '/videos/nature-stars.webm';
@@ -158,7 +107,7 @@ export default function ClientEventPage({ slug = 'sample-event' }) {
               />
             ) : (
               <MasonryGallery
-                eventSlug={cleanSlug}
+                eventSlug={slug}
                 photos={accessState.photos}
                 accessType={accessState.accessType}
                 allowDownloads={accessState.allowDownloads}
