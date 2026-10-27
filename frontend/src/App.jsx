@@ -4,71 +4,40 @@ import AdminLogin from './components/admin/AdminLogin';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import { adminApi } from './services/api';
 
-/**
- * Parses the current browser pathname to determine the active route and event slug.
- * Handles trailing slashes, query parameters, and URL encoding cleanly.
- */
-function parseCurrentLocation() {
-  if (typeof window === 'undefined') {
-    return { route: 'CLIENT', eventSlug: 'sample-event' };
-  }
-
-  const pathname = window.location.pathname || '/';
-
-  if (pathname.startsWith('/admin')) {
-    return { route: 'ADMIN', eventSlug: '' };
-  }
-
-  if (pathname.startsWith('/event/')) {
-    // Extract everything after /event/ and before any subsequent slash, query param, or hash
-    const rawSlug = pathname.replace(/^\/event\/?/, '').split('/')[0].split('?')[0].split('#')[0];
-    const cleanSlug = decodeURIComponent(rawSlug || '').trim();
-    return {
-      route: 'CLIENT',
-      eventSlug: cleanSlug || 'sample-event'
-    };
-  }
-
-  return { route: 'CLIENT', eventSlug: 'sample-event' };
-}
-
 export default function App() {
-  const initial = parseCurrentLocation();
-
   // Routes: 'CLIENT' | 'ADMIN'
-  const [route, setRoute] = useState(initial.route);
-  const [eventSlug, setEventSlug] = useState(initial.eventSlug);
-  const [adminUser, setAdminUser] = useState(() => {
-    if (initial.route === 'ADMIN' && adminApi.getToken()) {
-      return { role: 'ADMIN' };
-    }
-    return null;
-  });
+  const [route, setRoute] = useState('CLIENT');
+  const [eventSlug, setEventSlug] = useState('sample-event');
+  const [adminUser, setAdminUser] = useState(null);
 
-  // Sync route with URL path on back/forward browser navigation
+  // Sync route with URL path
   useEffect(() => {
     const handleLocation = () => {
-      const loc = parseCurrentLocation();
-      setRoute(loc.route);
-
-      if (loc.eventSlug) {
-        setEventSlug(loc.eventSlug);
-      }
-
-      if (loc.route === 'ADMIN') {
+      const path = window.location.pathname;
+      if (path.startsWith('/admin')) {
+        setRoute('ADMIN');
         const token = adminApi.getToken();
         if (token) {
           setAdminUser({ role: 'ADMIN' });
         }
+      } else if (path.startsWith('/event/')) {
+        const slug = path.split('/event/')[1];
+        if (slug) {
+          setEventSlug(slug);
+          setRoute('CLIENT');
+        }
+      } else {
+        setRoute('CLIENT');
       }
     };
 
+    handleLocation();
     window.addEventListener('popstate', handleLocation);
     return () => window.removeEventListener('popstate', handleLocation);
   }, []);
 
   const navigateToClient = (slug) => {
-    const targetSlug = (slug || eventSlug || 'sample-event').toString().trim().replace(/\/+$/, '');
+    const targetSlug = slug || eventSlug;
     setEventSlug(targetSlug);
     window.history.pushState({}, '', `/event/${targetSlug}`);
     setRoute('CLIENT');
@@ -98,4 +67,3 @@ export default function App() {
     </div>
   );
 }
-
