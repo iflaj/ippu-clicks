@@ -3,7 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import compression from 'compression';
-import { CONFIG, UPLOADS_DIR, ASSETS_DIR, ROOT_DIR } from './config/index.js';
+import { CONFIG, UPLOADS_DIR, ASSETS_DIR } from './config/index.js';
 import { getActiveEngine, initDatabase } from './data/db.js';
 import adminRoutes from './routes/adminRoutes.js';
 import clientRoutes from './routes/clientRoutes.js';
@@ -69,10 +69,6 @@ app.get('/api/health', (req, res) => {
 
 // Optional: Serve built frontend from dist folder if deployed together (e.g. on Spaceship / VPS)
 const possibleDistPaths = [
-  path.resolve(ROOT_DIR, '../frontend/dist'),
-  path.resolve(ROOT_DIR, 'frontend/dist'),
-  path.resolve(ROOT_DIR, 'public'),
-  path.resolve(ROOT_DIR, 'dist'),
   path.join(process.cwd(), '../frontend/dist'),
   path.join(process.cwd(), 'frontend/dist'),
   path.join(process.cwd(), 'public'),
